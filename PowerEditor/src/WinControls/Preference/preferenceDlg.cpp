@@ -31,6 +31,7 @@
 #include "preferenceDlg.h"
 #include "lesDlgs.h"
 #include "EncodingMapper.h"
+//#include "afxwin.h"
 
 #define MyGetGValue(rgb)      (LOBYTE((rgb)>>8))
 
@@ -99,6 +100,77 @@ static int encodings[] = {
 bool PreferenceDlg::closeWhenLastTab()
 {
 	return isLastTabToCloseChecked;
+}
+
+INT_PTR CALLBACK PreferenceDlg::callDockSwitcher()
+{
+	NppParameters *pNppParam = NppParameters::getInstance();
+	const NppGUI & nppGUI = pNppParam->getNppGUI();
+	toolBarStatusType tbStatus = nppGUI._toolBarStatus;
+	int tabBarStatus = nppGUI._tabStatus;
+	bool showTool = nppGUI._toolbarShow;
+	bool showStatus = nppGUI._statusBarShow;
+	bool showMenu = nppGUI._menuBarShow;
+
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_HIDE, BM_SETCHECK, showTool ? BST_UNCHECKED : BST_CHECKED, 0);
+	int ID2Check = 0;
+	switch (tbStatus)
+	{
+	case TB_SMALL:
+		ID2Check = IDC_RADIO_SMALLICON;
+		break;
+	case TB_LARGE:
+		ID2Check = IDC_RADIO_BIGICON;
+		break;
+	case TB_STANDARD:
+	default:
+		ID2Check = IDC_RADIO_STANDARD;
+	}
+	::SendDlgItemMessage(_hSelf, ID2Check, BM_SETCHECK, BST_CHECKED, 0);
+
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_REDUCE, BM_SETCHECK, tabBarStatus & TAB_REDUCE, 0);
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_LOCK, BM_SETCHECK, !(tabBarStatus & TAB_DRAGNDROP), 0);
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_ORANGE, BM_SETCHECK, tabBarStatus & TAB_DRAWTOPBAR, 0);
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_DRAWINACTIVE, BM_SETCHECK, tabBarStatus & TAB_DRAWINACTIVETAB, 0);
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_ENABLETABCLOSE, BM_SETCHECK, tabBarStatus & TAB_CLOSEBUTTON, 0);
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_DBCLICK2CLOSE, BM_SETCHECK, tabBarStatus & TAB_DBCLK2CLOSE, 0);
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_TAB_VERTICAL, BM_SETCHECK, tabBarStatus & TAB_VERTICAL, 0);
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_TAB_MULTILINE, BM_SETCHECK, tabBarStatus & TAB_MULTILINE, 0);
+
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_TAB_HIDE, BM_SETCHECK, tabBarStatus & TAB_HIDE, 0);
+	::SendMessage(_hSelf, WM_COMMAND, IDC_CHECK_TAB_HIDE, 0);
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_SHOWSTATUSBAR, BM_SETCHECK, showStatus, 0);
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_HIDEMENUBAR, BM_SETCHECK, !showMenu, 0);
+
+	bool showDocSwitcher = ::SendMessage(::GetParent(_hParent), NPPM_ISDOCSWITCHERSHOWN, 0, 0) == TRUE;
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_DOCSWITCH, BM_SETCHECK, showDocSwitcher, 0);
+	::SendDlgItemMessage(_hSelf, IDC_CHECK_DOCSWITCH_NOEXTCOLUMN, BM_SETCHECK, nppGUI._fileSwitcherWithoutExtColumn, 0);
+
+	LocalizationSwitcher & localizationSwitcher = pNppParam->getLocalizationSwitcher();
+
+	for (size_t i = 0, len = localizationSwitcher.size(); i < len; ++i)
+	{
+		pair<wstring, wstring> localizationInfo = localizationSwitcher.getElementFromIndex(i);
+		::SendDlgItemMessage(_hSelf, IDC_COMBO_LOCALIZATION, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(localizationInfo.first.c_str()));
+	}
+	wstring lang = TEXT("English"); // Set default language as Englishs
+	if (pNppParam->getNativeLangA()) // if nativeLangA is not NULL, then we can be sure the default language (English) is not used
+	{
+		string fn = localizationSwitcher.getFileName();
+		wstring fnW(fn.begin(), fn.end());
+		fnW.assign(fn.begin(), fn.end());
+		lang = localizationSwitcher.getLangFromXmlFileName(fnW.c_str());
+	}
+	auto index = ::SendDlgItemMessage(_hSelf, IDC_COMBO_LOCALIZATION, CB_FINDSTRINGEXACT, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(lang.c_str()));
+	if (index != CB_ERR)
+		::SendDlgItemMessage(_hSelf, IDC_COMBO_LOCALIZATION, CB_SETCURSEL, index, 0);
+
+	ETDTProc enableDlgTheme = reinterpret_cast<ETDTProc>(pNppParam->getEnableThemeDlgTexture());
+	if (enableDlgTheme)
+		enableDlgTheme(_hSelf, ETDT_ENABLETAB);
+	::SendMessage(::GetParent(_hParent), NPPM_SHOWDOCSWITCHER, 0, FALSE);
+	getFocus();
+	return TRUE;
 }
 
 INT_PTR CALLBACK PreferenceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
@@ -170,7 +242,7 @@ INT_PTR CALLBACK PreferenceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM 
 			_wVector.push_back(DlgInfo(&_autoCompletionDlg, TEXT("Auto-Completion"), TEXT("AutoCompletion")));
 			_wVector.push_back(DlgInfo(&_multiInstDlg, TEXT("Multi-Instance"), TEXT("MultiInstance")));
 			_wVector.push_back(DlgInfo(&_delimiterSettingsDlg, TEXT("Delimiter"), TEXT("Delimiter")));
-			_wVector.push_back(DlgInfo(&_settingsOnCloudDlg, TEXT("Cloud"), TEXT("Cloud")));
+			_wVector.push_back(DlgInfo(&_settingsOnCloudDlg, TEXT("Sync Location"), TEXT("Sync Location")));
 			_wVector.push_back(DlgInfo(&_searchEngineDlg, TEXT("Search Engine"), TEXT("SearchEngine")));
 			_wVector.push_back(DlgInfo(&_settingsDlg, TEXT("MISC."), TEXT("MISC")));
 

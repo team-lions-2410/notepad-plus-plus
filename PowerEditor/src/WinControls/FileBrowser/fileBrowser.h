@@ -25,7 +25,6 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-
 #ifndef FILEBROWSER_H
 #define  FILEBROWSER_H
 
@@ -33,6 +32,10 @@
 #ifndef DOCKINGDLGINTERFACE_H
 #include "DockingDlgInterface.h"
 #endif //DOCKINGDLGINTERFACE_H
+
+#ifndef PREFERENCE_DLG_H
+#include "preferenceDlg.h"
+#endif //PREFERENCE_DLG_H
 
 #include "TreeView.h"
 #include "fileBrowser_rc.h"
@@ -131,6 +134,10 @@ private:
 };
 
 class FileBrowser : public DockingDlgInterface {
+
+friend class Notepad_plus_Window;
+friend class FileManager;
+
 public:
 	FileBrowser(): DockingDlgInterface(IDD_FILEBROWSER) {};
 	~FileBrowser();
@@ -167,6 +174,9 @@ public:
 
 	std::vector<generic_string> getRoots() const;
 	generic_string getSelectedItemPath() const;
+
+private:
+	PreferenceDlg _preference;
 
 protected:
 	TreeView _treeView;

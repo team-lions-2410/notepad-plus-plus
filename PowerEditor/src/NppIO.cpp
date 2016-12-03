@@ -674,8 +674,7 @@ void Notepad_plus::doClose(BufferID id, int whichOne, bool doDeleteBackup)
 	command(IDM_VIEW_REFRESHTABAR);
 
 	//bool endIfLast = (BST_CHECKED == ::SendDlgItemMessage(_preference.getHSelf(), IDC_CHECK_CLOSEWHENLASTTAB, BM_GETCHECK, 0, 0));
-	bool endIfLast = _preference.closeWhenLastTab();
-
+	bool endIfLast = _preference.closeWhenLastTab(); 
 	if (!NppParameters::getInstance()->getNppGUI()._quitOnEmpty && endIfLast)
 	{
 		// the user closed the last open tab
@@ -1365,8 +1364,32 @@ bool Notepad_plus::fileRename(BufferID id)
 	TCHAR *pfn = fDlg.doSaveDlg();
 
 	bool success = false;
+
+	// Enable file autodetection again
+
 	if (pfn)
-		success = MainFileManager->moveFile(bufferID, pfn);
+	{
+		BufferID other = _pNonDocTab->findBufferByName(pfn);
+		if (other == BUFFER_INVALID)	//can save, other view doesnt contain buffer
+		{
+			bool res = doSave(bufferID, pfn, false);
+			//buf->setNeedsLexing(true);	//commented to fix wrapping being removed after save as (due to SCI_CLEARSTYLE or something, seems to be Scintilla bug)
+			//Changing lexer after save seems to work properly
+			success = MainFileManager->moveFile(bufferID, pfn);
+			return res;
+		}
+		else		//cannot save, other view has buffer already open, activate it
+		{
+			_nativeLangSpeaker.messageBox("FileAlreadyOpenedInNpp",
+				_pPublicInterface->getHSelf(),
+				TEXT("The file is already opened in the Notepad++."),
+				TEXT("ERROR"),
+				MB_OK | MB_ICONSTOP);
+			switchToFile(other);
+			return false;
+		}
+
+	}
 
 	scnN.nmhdr.code = success ? NPPN_FILERENAMED : NPPN_FILERENAMECANCEL;
 	_pluginsManager.notify(&scnN);
