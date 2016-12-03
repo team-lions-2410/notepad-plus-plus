@@ -239,6 +239,9 @@ public :
 	};
 
 	bool closeWhenLastTab();
+	//bool dockIsAvtive();
+	//void setDockSwitcherState();
+	INT_PTR CALLBACK callDockSwitcher();
 	void showDialogByName(const TCHAR *name) const;
 	void setListSelection(size_t currentSel) const;
 
